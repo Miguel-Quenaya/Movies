@@ -11,13 +11,16 @@ function main(){
 
 function buscador(){
     var texto = document.getElementById('filmSearch').value;
+    if(texto.length < 3){
+        document.getElementById('suggestions').style = 'display:none'
+        return;
+    }
     var palabrasarray = texto.split(' ');
     var palabras = "&query=" + palabrasarray[0];
     for (let i = 1; i < palabrasarray.length; i++) {
         palabras += '+' + palabrasarray[i];
         
     }
-    //var queryBuscador = '&query=' + document.getElementById('filmSearch').value;
     var url = 'https://api.themoviedb.org/3/search/movie';
 
         key = '?api_key=5c0aaa9071b6434430476ee43c85f161';
@@ -39,7 +42,6 @@ function buscador(){
                 console.log(e.message);
             }
     });
-
 }
 
 function mostrarResultados(array){
@@ -50,34 +52,35 @@ function mostrarResultados(array){
         inner += '<div class="suggest-element" id="' + array[i]['id'] + '">'+ array[i]['original_title']+ '</div>'       
     }
     document.getElementById('suggestions').innerHTML = inner;
-
     resultados = document.getElementsByClassName('suggest-element');
 
     for (let i = 0; i< resultados.length; i++) {
-      resultados[i].addEventListener('click', redirectFilm,true);
-       
+      resultados[i].addEventListener('click', redirectFilmPuente,true); 
     }
-
 }
 
-function redirectFilm(){
+function redirectFilmPuente(){
+    redirectFilm(this.id);
+}
+
+function redirectFilm(idPeli){
         $.ajax({
             type: 'GET',
-            url: 'https://api.themoviedb.org/3/movie/' + this.id + '/external_ids?api_key=5c0aaa9071b6434430476ee43c85f161',
+            url: 'https://api.themoviedb.org/3/movie/' + idPeli + '/external_ids?api_key=5c0aaa9071b6434430476ee43c85f161',
             async: false,
             global: false,
             contentType: 'application/json',
             dataType: 'jsonp',
             success: function(json) {
-                imdbid = json["imdb_id"];
+                
+                if(json["imdb_id"] != null){
+                    window.open("https://www.imdb.com/title/" + json["imdb_id"] + "/?ref_=nv_sr_srsg_3", '_blank').focus();
+                }
             },
             error: function(e) {
                 console.log(e.message);
             }
-    });
-    alert(imdbid);
-
-    window.location.replace("https://www.imdb.com/title/" + imdbid + "/?ref_=nv_sr_srsg_3");
+    });   
 }
 
 function buscarPelis(){
@@ -86,27 +89,19 @@ function buscarPelis(){
         detallesPeli(arrayJson[i]['id']);
         
     }
-    console.log('EL INNER');
-    console.log(inner);
-   
 }
 
 function detallesPeli(id){
-    
+   
         $.ajax({
             type: 'GET',
             url: 'https://api.themoviedb.org/3/movie/' + id + '?api_key=5c0aaa9071b6434430476ee43c85f161&language=es',
             async: false,
-           
             contentType: 'application/json',
             dataType: 'jsonp',
             success: function(json) {
-                generarHtml(json);
-                //console.log('TITULO' + arrayJsonPeli['title'] + id);
-                //console.log('https://api.themoviedb.org/3/movie/' + id + '?api_key=5c0aaa9071b6434430476ee43c85f161&language=es')
-                return;
-
-                
+                obtenerActores(id, json);
+                return; 
             },
             error: function (xhr, status, error) {
                 console.log("Result: " + status + " " + error + " " + xhr.status + " " + xhr.statusText)
@@ -114,17 +109,49 @@ function detallesPeli(id){
     });
 }
 
-function generarHtml(arrayJsonPeli){
-    
-        
-        console.log(arrayJsonPeli['title']);
-        inner += '<div class="col-md-4"><div class="card mb-4 box-shadow"><img class="card-img-top" data-src="holder.js/100px225?theme=thumb&amp;bg=55595c&amp;fg=eceeef&amp;text=Thumbnail" alt="Thumbnail [100%x225]" style="width: 100%; display: block;" src="https://image.tmdb.org/t/p/w500' + arrayJsonPeli['poster_path'] + '" data-holder-rendered="true"><div class="card-body text-center"><h5 class="card-title text-center">' + arrayJsonPeli['title'] + '</h5><div><small class="text-muted"><i class="bi bi-film mx-2"> </i> Science Fiction, Action, Adventure</small></div><div><small class="text-muted"><i class="bi bi-calendar3 mx-2"> </i> 16-11-2021</small></div><small class="text-muted"><i class="bi bi-people mx-2"></i> Keanu Reeves, Carrie-Anne Moss, Yahya Abdul-Mateen II</small></div><div class="card-footer bg-primary text-white text-center"><a href="https://www.imdb.com/title/tt10838180/" class="text-white"><i class="bi bi-eye"></i> Veure fitxa a IMDB</a></div></div></div>' ;
-        console.log(inner);
+function obtenerActores(id, arrayJsonPeli){
+    $.ajax({
+        type: 'GET',
+        url: 'https://api.themoviedb.org/3/movie/' + id + '/casts?api_key=5c0aaa9071b6434430476ee43c85f161&language=es',
+        async: false,
+        contentType: 'application/json',
+        dataType: 'jsonp',
+        success: function(json) {
+            var actores = json['cast'];
+            generarHtml( arrayJsonPeli, actores);
+            return;           
+        },
+        error: function (xhr, status, error) {
+            console.log("Result: " + status + " " + error + " " + xhr.status + " " + xhr.statusText)
+        }
+});
+}
+
+function generarHtml(arrayJsonPeli, actores){
+        inner += '<div class="col-md-4"><div class="card mb-4 box-shadow"><img class="card-img-top" data-src="holder.js/100px225?theme=thumb&amp;bg=55595c&amp;fg=eceeef&amp;text=Thumbnail" alt="Thumbnail [100%x225]" style="width: 100%; display: block;" src="https://image.tmdb.org/t/p/w500' + arrayJsonPeli['poster_path'] + '" data-holder-rendered="true"><div class="card-body text-center"><h5 class="card-title text-center">' + arrayJsonPeli['title'] + '</h5><div><small class="text-muted"><i class="bi bi-film mx-2"> </i>' + actoresCategorias(arrayJsonPeli['genres'], false) + '</small></div><div><small class="text-muted"><i class="bi bi-calendar3 mx-2"> </i>' + arrayJsonPeli['release_date'] + '</small></div><small class="text-muted"><i class="bi bi-people mx-2"></i>' + actoresCategorias(actores, true) + '</small></div><div class="card-footer bg-primary text-white text-center"><a href="javascript:redirectFilm(' + arrayJsonPeli['id'] + ')" class="text-white"><i class="bi bi-eye"></i> Veure fitxa a IMDB</a></div></div></div>' ;
         return;
 
-    }
+}
 
-//actores http://api.themoviedb.org/3/movie/25565/casts?api_key=5c0aaa9071b6434430476ee43c85f161
+function actoresCategorias(array, boolean){
+    
+    if(array.length > 0){
+        var nombres = array[0]['name'];
+
+    if(array.length > 1){
+        for (let i = 1; i < array.length; i++) {
+            nombres += ', ' + array[i]['name'];
+            if(boolean && i == 3){
+                return nombres;
+            }
+            
+        }
+    }
+    return nombres;
+    }
+    return '';
+}
+
 
 $(document).ajaxStart(function(){
     loading.style = 'display: block';
